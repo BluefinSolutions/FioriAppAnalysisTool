@@ -128,7 +128,8 @@
                 <Image
                   width="85px"
                   height="30px"
-                  src="images/logo.png" />
+                  src="images/logo.png"
+                  press="onLogoPress" />
               </contentMiddle>
               <contentRight>
                 <Select
@@ -268,7 +269,10 @@
         onURLPress : function(oEvent) {
           var sURL = oEvent.getSource().getCustomData()[0].getValue();
           sap.m.URLHelper.redirect(sURL, true);
+        },
 
+        onLogoPress : function(oEvent) {
+          window.open("http://www.bluefinsolutions.com", "_blank");
         }
 
       } );
