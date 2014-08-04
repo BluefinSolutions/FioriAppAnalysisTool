@@ -1,0 +1,357 @@
+<!DOCTYPE HTML>
+<html>
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta charset="UTF-8">
+
+    <title>SAP Fiori App Analysis</title>
+
+    <script id="sap-ui-bootstrap"
+      type="text/javascript"
+      src="/sapui5/sapui5-sdk-1.16.3/resources/sap-ui-core.js"
+      _src="/sapui5/latest/resources/sap-ui-core.js"
+      data-sap-ui-theme="sap_bluecrystal"
+      data-sap-ui-libs="sap.m"
+      data-sap-ui-xx-bindingSyntax="complex"
+    >
+    </script>
+
+    <script id="appDetailFragment" type="sapui5/xmlfragment">
+      <core:FragmentDefinition
+        xmlns:core="sap.ui.core"
+        xmlns="sap.m">
+        <List id="idListDetail"
+          _width="50%">
+          <items>
+            <StandardListItem title="App" description="{App}" />
+            <StandardListItem title="Area" description="{Area}" />
+            <StandardListItem title="Product" description="{Product}" />
+            <StandardListItem title="Release" description="{Release}" />
+            <StandardListItem title="Type" description="{Type}" />
+            <DisplayListItem
+              label="Documentation"
+              type="Active"
+              press="onURLPress">
+              <customData>
+                <core:CustomData key="URL" value="{Documentation}" />
+              </customData>
+            </DisplayListItem>
+          </items>
+        </List>
+      </core:FragmentDefinition>
+    </script>
+
+    <script id="dialogFragment" type="sapui5/xmlfragment">
+      <core:FragmentDefinition
+        xmlns:core="sap.ui.core"
+        xmlns="sap.m">
+        <Dialog
+          title="Details">
+          <beginButton>
+            <Button
+              text="OK"
+              press="onDialogOK" />
+          </beginButton>
+        </Dialog>
+      </core:FragmentDefinition>
+    </script>
+
+    <script id="view1" type="sapui5/xmlview">
+      <mvc:View
+        controllerName="local.controller"
+        displayBlock="true"
+        xmlns:mvc="sap.ui.core.mvc"
+        xmlns:core="sap.ui.core"
+        xmlns:v="sap.viz.ui5"
+        xmlns:t="sap.viz.ui5.types"
+        xmlns="sap.m">
+        <Shell>
+        <App>
+        <Page id="idPage"
+          class="sapUiFioriObjectPage"
+          title="SAP Fiori Apps">
+          <content>
+            <v:Treemap
+              id="idChart"
+              selectData="onSelectOrDeselect"
+              deselectData="onSelectOrDeselect"
+              width="100%"
+              height="300px">
+              <v:title>
+                <t:Title
+                  visible="true"
+                  text="by {
+                    path : '/category',
+                    formatter : 'local.Formatter.removeUnderscore'
+                  }" />
+              </v:title>
+            </v:Treemap>
+            <List id="idList"
+              headerText="Applications"
+              mode="{device>/listMode}"
+              selectionChange="onAppSelect"
+              items="{/Apps}">
+              <headerToolbar>
+                <Toolbar>
+                  <content>
+                    <Label text="Applications" />
+                    <ToolbarSpacer />
+                    <SearchField
+                      width="50%"
+                      placeholder="Search for app name"
+                      search="onSearch" />
+                  </content>
+                </Toolbar>
+              </headerToolbar>
+              <StandardListItem
+                type="{device>/listItemType}"
+                press="onAppSelect"
+                icon="{
+                  path : 'Type',
+                  formatter : 'local.Formatter.appTypeIcon'
+                }"
+                title="{App}"
+                description="{
+                  parts : [
+                    { path : 'Product' },
+                    { path : 'Area' },
+                    { path : 'Sub-Area' }
+                  ],
+                  formatter : 'local.Formatter.appDescription'
+                }"
+                info="{Product_Code}" />
+            </List>
+          </content>
+          <footer>
+            <Bar>
+              <contentMiddle>
+                <Image
+                  width="85px"
+                  height="30px"
+                  src="images/logo.png" />
+              </contentMiddle>
+              <contentRight>
+                <Select
+                  type="IconOnly"
+                  icon="sap-icon://Chart-Tree-Map"
+                  autoAdjustWidth="true"
+                  change="onCategoryChange"
+                  items="{/categories}">
+                  <items>
+                    <core:Item
+                      key="{category}"
+                      text="{
+                        path : 'category',
+                        formatter : 'local.Formatter.removeUnderscore'
+                      }" />
+                  </items>
+                </Select>
+              </contentRight>
+            </Bar>
+          </footer>
+        </Page>
+      </App>
+      </Shell>
+      </mvc:View>
+    </script>
+
+    <script>
+
+      _g = sap.ui.getCore().byId;
+
+      jQuery.sap.declare("local.Formatter");
+      local.Formatter = {
+
+        removeUnderscore : function(s) {
+          if (s) return s.replace(/_/g, ' ');
+        },
+
+        appDescription : function(product, area, subarea) {
+          return [product, area, subarea].filter(function(s) {
+            return s;
+          }).join(" - ");
+        },
+
+        appTypeIcon : function(type) {
+          switch (type) {
+            case 'Transactional':
+              return 'sap-icon://action';
+              break;
+            case 'Analytical':
+              return 'sap-icon://pipeline-analysis';
+              break;
+            case 'Factsheet':
+              return 'sap-icon://folder';
+              break;
+            case 'Hybrid':
+              return 'sap-icon://approvals';
+              break;
+            default:
+              return 'sap-icon://database';
+          }
+      }
+
+      }
+
+      sap.ui.controller("local.controller", {
+
+        filterValues : [],
+        queryString : "",
+
+        onInit : function() {
+          this.appDetail = sap.ui.xmlfragment({
+            fragmentContent : jQuery("#appDetailFragment").html()
+          }, this);
+          this.dialog = sap.ui.xmlfragment({
+            fragmentContent : jQuery("#dialogFragment").html(),
+          }, this);
+          this.dialog.addContent(this.appDetail);
+        },
+
+        filterBinding : function() {
+          var mData = this.getView().getModel().getData();
+          var oBinding = this.getView().byId('idList').getBinding("items");
+          var aFilters = this.filterValues.map(function(v) {
+            return new sap.ui.model.Filter(mData.category, "EQ", v);
+          });
+          if (this.queryString) {
+            aFilters.push(new sap.ui.model.Filter('App', 'Contains', this.queryString));
+          }
+          oBinding.filter(aFilters, sap.ui.model.FilterType.Application);
+        },
+
+        onSelectOrDeselect : function(oEvent) {
+          var mData = this.getView().getModel().getData();
+
+          // Get the value selected from the chart
+          var nCountIndex = oEvent.getParameter('data')[0].data[0].ctx.path.dii_a1;
+          var sValue = mData.counts[nCountIndex].property;
+
+          // Add or remove value from filter values, based on the action
+          var sAction = oEvent.getParameter("name");
+          if (sAction === "selectData") {
+            this.filterValues.push(sValue);
+          } else {
+            this.filterValues = this.filterValues.filter(function(v) {
+              return v !== sValue;
+            });
+          }
+
+          // Apply the filter(s)
+          this.filterBinding();
+        },
+
+        onCategoryChange : function(oEvent) {
+          this.filterValues = [];
+          this.filterBinding();
+          fnSetCount(oEvent.getSource().getModel(), oEvent.getParameter('selectedItem').getKey());
+        },
+
+        onSearch : function(oEvent) {
+          this.queryString = oEvent.getParameter('query');
+          this.filterBinding();
+        },
+
+        onAppSelect : function(oEvent) {
+          var oItem = oEvent.getParameter("listItem") || oEvent.getSource();
+          this.appDetail.setBindingContext(oItem.getBindingContext());
+          if (!this.dialog.getModel()) {
+            this.dialog.setModel(this.getView().getModel());
+          }
+          this.dialog.open();
+        },
+
+        onDialogOK : function(oEvent) {
+          oEvent.getSource().getParent().close();
+        },
+
+        onURLPress : function(oEvent) {
+          var sURL = oEvent.getSource().getCustomData()[0].getValue();
+          sap.m.URLHelper.redirect(sURL, true);
+
+        }
+
+      } );
+
+      var oView = sap.ui.xmlview({ viewContent: jQuery('#view1').html() });
+
+      var oDataset = new sap.viz.ui5.data.FlattenedDataset({
+        dimensions : [
+          {
+            axis : 1,
+            name : 'Category',
+            value : "{property}"
+          }
+        ],
+        measures : [
+          {
+            group : 1,
+            name : 'Count',
+            value : '{value}'
+          }
+        ],
+        data : {
+          path : "/counts"
+        }
+      });
+
+      var fnObjectToArray = function(object) {
+        return Object.keys(object).map(function(key) {
+          return { property : key, value : object[key] };
+        });
+      }
+
+      var fnCountsByProperty = function(records, property) {
+          return records.reduce(function(counts, record) {
+            var p = record[property];
+            if (p in counts) {
+              counts[p]++;
+            } else {
+              counts[p] = 1;
+            }
+            return counts;
+          }, {});
+      }
+
+      var fnSetCount = function(oModel, sProperty) {
+        var sProperty = sProperty || "Product_Code";
+        var mData = oModel.getData();
+        mData.counts = fnObjectToArray(fnCountsByProperty(mData.Apps, sProperty || 'Product_Code'));
+        mData.category = sProperty;
+        oModel.setData(mData);
+      }
+
+      var aCategories = [
+        "Product_Code", "Product", "Type", "Component_for_Customer_Messages_(Backend)"
+      ];
+
+      var oModel = new sap.ui.model.json.JSONModel('./model/applist.json');
+      oModel.setSizeLimit(350);
+      oModel.attachEventOnce('requestCompleted', function(oEvent) {
+        var oModel = oEvent.getSource();
+        oModel.setData({
+          categories : aCategories.map(function(c) { return { category : c }; })
+        }, true);
+        fnSetCount(oModel, aCategories[0]);
+      });
+
+      var oChart = oView.byId("idChart");
+      oChart.setDataset(oDataset);
+
+      oView.setModel(oModel);
+      oDeviceModel = new sap.ui.model.json.JSONModel({
+        isPhone : jQuery.device.is.phone,
+        listMode : (jQuery.device.is.phone) ? "None" : "SingleSelectMaster",
+        listItemType : (jQuery.device.is.phone) ? "Active" : "Inactive"
+      });
+      oDeviceModel.setDefaultBindingMode("OneWay");
+      oView.setModel(oDeviceModel, "device");
+
+      oView.placeAt("content");
+
+    </script>
+
+  </head>
+
+  <body class="sapUiBody" id="content" />
+</html>
