@@ -106,10 +106,7 @@
               <StandardListItem
                 type="{device>/listItemType}"
                 press="onAppSelect"
-                icon="{
-                  path : 'Type',
-                  formatter : 'local.Formatter.appTypeIcon'
-                }"
+                icon="images/Fiori-Icon-{Type}.png"
                 title="{App}"
                 description="{
                   parts : [
@@ -171,26 +168,7 @@
           return [product, area, subarea].filter(function(s) {
             return s;
           }).join(" - ");
-        },
-
-        appTypeIcon : function(type) {
-          switch (type) {
-            case 'Transactional':
-              return 'sap-icon://action';
-              break;
-            case 'Analytical':
-              return 'sap-icon://pipeline-analysis';
-              break;
-            case 'Factsheet':
-              return 'sap-icon://folder';
-              break;
-            case 'Hybrid':
-              return 'sap-icon://approvals';
-              break;
-            default:
-              return 'sap-icon://database';
-          }
-      }
+        }
 
       }
 
